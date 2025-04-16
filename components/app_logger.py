@@ -41,3 +41,4 @@ class AppLogger:
         
         logger.addHandler(handler)
         return logger
+

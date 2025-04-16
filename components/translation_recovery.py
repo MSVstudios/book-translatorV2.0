@@ -1,8 +1,14 @@
+import os
 import sqlite3
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple, Callable
+from datetime import datetime, timedelta
 
+
+DB_PATH = 'db/translations.db' # Define DB_PATH here
+
+# Translation Recovery
 class TranslationRecovery:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
         
     def get_failed_translations(self) -> List[Dict]:

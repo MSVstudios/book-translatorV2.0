@@ -13,6 +13,7 @@ from functools import wraps
 from typing import List, Dict, Callable
 from flask import Flask, request, jsonify, Response, send_file, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 # Import the classes from the components package
 from components.app_logger import AppLogger
@@ -224,7 +225,7 @@ def translate():
 
         def generate():
             try:
-                for update in translator.translate_text(text, source_lang, target_lang, translation_id, logger, cache, monitor, DB_PATH):
+                for update in translator.translate_text(text, source_lang, target_lang, translation_id, logger, monitor, cache):
                     yield f"data: {json.dumps(update, ensure_ascii=False)}\n\n"
             except Exception as e:
                 error_message = str(e)

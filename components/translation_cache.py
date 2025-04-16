@@ -4,13 +4,11 @@ from typing import Optional, Dict
 
 # Translation cache setup
 class TranslationCache:
-    def __init__(self, db_path: str = CACHE_DB_PATH):
+    def __init__(self, db_path: str):
         self.db_path = db_path
-        self._init_cache_db()
-    
-    def _init_cache_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute('''
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('''
                 CREATE TABLE IF NOT EXISTS translation_cache (
                     hash_key TEXT PRIMARY KEY,
                     source_lang TEXT,
@@ -22,6 +20,7 @@ class TranslationCache:
                     last_used TIMESTAMP
                 )
             ''')
+        self.conn.commit()  
 
     def _generate_hash(self, text: str, source_lang: str, target_lang: str) -> str:
         key = f"{text}:{source_lang}:{target_lang}".encode('utf-8')

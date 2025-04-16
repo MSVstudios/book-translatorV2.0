@@ -5,7 +5,6 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Dict
 
-
 # Monitoring setup
 @dataclass
 class TranslationMetrics:

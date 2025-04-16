@@ -1,16 +1,31 @@
 import json
 import requests
 import time
+from typing import List, Dict, Optional, Tuple, Callable
+from tqdm import tqdm
+import os
 import sqlite3
+from datetime import datetime, timedelta
+import logging
+from logging.handlers import RotatingFileHandler
+import hashlib
 import traceback
-from typing import List, Dict, Callable
+import psutil
+import threading
+from collections import deque
+from dataclasses import dataclass, field
 from functools import wraps
+from flask import Flask, request, jsonify, Response, send_file, send_from_directory
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
 from deep_translator import GoogleTranslator
 
+DB_PATH = 'db/translations.db' # Define DB_PATH here
+
 class BookTranslator:
-    def __init__(self, model_name: str = "aya-expanse:32b", chunk_size: int = 1000, llm_refine: bool = True, api_url: str = "http://localhost:11434/api/generate"):
+    def __init__(self, model_name: str = "aya-expanse:32b", chunk_size: int = 1000, llm_refine: bool = True):
         self.model_name = model_name
-        self.api_url = api_url
+        self.api_url = "http://localhost:11434/api/generate"
         self.chunk_size = chunk_size
         self.session = requests.Session()
         self.session.mount('http://', requests.adapters.HTTPAdapter(
@@ -64,7 +79,7 @@ class BookTranslator:
             
         return chunks
 
-    def translate_text(self, text: str, source_lang: str, target_lang: str, translation_id: int, logger, cache, monitor, DB_PATH):
+    def translate_text(self, text: str, source_lang: str, target_lang: str, translation_id: int, logger, monitor, cache):
         start_time = time.time()
         success = False
         
@@ -121,10 +136,30 @@ class BookTranslator:
                         logger.translation_logger.info(f"Refining chunk {i}/{total_chunks}")
                         if self.llm_refine:
                             logger.translation_logger.info(f"Refining translation for chunk {i}")
+                            # Add this yield to show that refinement is starting
+                            yield {
+                                'progress': progress,
+                                'stage': 'starting_refinement',
+                                'machine_translation': '\n\n'.join(machine_translations),
+                                'current_chunk': i,
+                                'total_chunks': total_chunks * 2,
+                                'refining_chunk': i
+                            }
+                            
                             refined_translation = self.refine_translation(google_translation, target_lang)
+                            
+                            # Add this yield to show that refinement is complete
+                            yield {
+                                'progress': progress,
+                                'stage': 'refinement_complete',
+                                'machine_translation': '\n\n'.join(machine_translations),
+                                'current_chunk': i,
+                                'total_chunks': total_chunks * 2,
+                                'refined_chunk': i
+                            }
                         else:
                             logger.translation_logger.info(f"No refinement for chunk {i}")
-                            refined_translation = google_translation
+                            refined_translation = google_translation        
 
                             
                         translated_chunks.append(refined_translation)
