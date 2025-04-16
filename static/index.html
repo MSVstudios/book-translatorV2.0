@@ -12,33 +12,13 @@
     
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    
-    <style>
-        .error-shake {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-        
-        .loading-indicator {
-            width: 20px;
-            height: 20px;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="static/style.css">
+
 </head>
 <body>
     <div id="root"></div>
@@ -89,37 +69,50 @@
         };
 
         // Custom Hooks
-        const useInterval = (callback, delay) => {
-            const savedCallback = React.useRef();
-
-            React.useEffect(() => {
-                savedCallback.current = callback;
-            }, [callback]);
-
-            React.useEffect(() => {
-                if (delay !== null) {
-                    const id = setInterval(() => savedCallback.current(), delay);
-                    return () => clearInterval(id);
-                }
-            }, [delay]);
-        };
-
-        const useDebounce = (value, delay) => {
-            const [debouncedValue, setDebouncedValue] = React.useState(value);
-
-            React.useEffect(() => {
-                const handler = setTimeout(() => {
-                    setDebouncedValue(value);
-                }, delay);
-
-                return () => {
-                    clearTimeout(handler);
+                const useInterval = (callback, delay) => {
+                    const savedCallback = React.useRef();
+        
+                    React.useEffect(() => {
+                        savedCallback.current = callback;
+                    }, [callback]);
+        
+                    React.useEffect(() => {
+                        if (delay !== null) {
+                            const id = setInterval(() => savedCallback.current(), delay);
+                            return () => clearInterval(id);
+                        }
+                    }, [delay]);
                 };
-            }, [value, delay]);
 
-            return debouncedValue;
-        };
+                const useTheme = () => {
+                    const [theme, setTheme] = React.useState('light');
 
+                    React.useEffect(() => {
+                        document.body.setAttribute('data-theme', theme);
+                    }, [theme]);
+
+                    const toggleTheme = () => {
+                        setTheme(theme === 'light' ? 'dark' : 'light');
+                    };
+
+                    return { theme, toggleTheme };
+                };
+        
+                const useDebounce = (value, delay) => {
+                    const [debouncedValue, setDebouncedValue] = React.useState(value);
+        
+                    React.useEffect(() => {
+                        const handler = setTimeout(() => {
+                            setDebouncedValue(value);
+                        }, delay);
+        
+                        return () => {
+                            clearTimeout(handler);
+                        };
+                    }, [value, delay]);
+        
+                    return debouncedValue;
+                };
         // Components
         const Card = ({ children, className = "" }) => (
             <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>{children}</div>
@@ -186,26 +179,26 @@
         const MetricsDisplay = ({ metrics }) => (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-600">Success Rate</h4>
-                    <p className="text-2xl font-bold text-blue-900">
+                    <h4 className="text-sm font-medium">Success Rate</h4>
+                    <p className="text-2xl font-bold">
                         {metrics.translation_metrics.success_rate.toFixed(1)}%
                     </p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-green-600">Avg Translation Time</h4>
-                    <p className="text-2xl font-bold text-green-900">
+                    <h4 className="text-sm font-medium">Avg Translation Time</h4>
+                    <p className="text-2xl font-bold">
                         {metrics.translation_metrics.average_translation_time.toFixed(1)}s
                     </p>
                 </div>
                 <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-purple-600">CPU Usage</h4>
-                    <p className="text-2xl font-bold text-purple-900">
+                    <h4 className="text-sm font-medium">CPU Usage</h4>
+                    <p className="text-2xl font-bold">
                         {metrics.system_metrics.cpu_percent}%
                     </p>
                 </div>
                 <div className="bg-orange-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-orange-600">Memory Usage</h4>
-                    <p className="text-2xl font-bold text-orange-900">
+                    <h4 className="text-sm font-medium">Memory Usage</h4>
+                    <p className="text-2xl font-bold">
                         {metrics.system_metrics.memory_percent}%
                     </p>
                 </div>
@@ -255,7 +248,7 @@
                                     checked={llmRefine}
                                     onChange={(e) => setLlmRefine(e.target.checked)}
                                 />
-                                <span className="ml-2 text-gray-700">LLM Refine</span>
+                                <span className="ml-2 text-gray-600">LLM Refine</span>
                             </label>
                 
                             <label className="block text-sm font-medium mb-2">Upload File</label>
@@ -323,6 +316,7 @@
             const [currentChunk, setCurrentChunk] = React.useState(0); // Add state for current chunk
             const [totalChunks, setTotalChunks] = React.useState(0); // Add state for total chunks
             const [stage, setStage] = React.useState(''); // Add state for translation stage
+            const { theme, toggleTheme } = useTheme();
         
             // Constants
             const languages = [
@@ -614,7 +608,14 @@
           };
           
           return (
-            <div className="space-y-6">
+            <div className="mx-auto max-w-4xl space-y-6">
+            <button onClick={toggleTheme} className="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200">
+                {theme === 'light' ? (
+                    <i className="fas fa-sun text-xl text-yellow-500"></i>
+                ) : (
+                    <i className="fas fa-moon text-xl text-gray-500"></i>
+                )}
+              </button>
             {metrics && <MetricsDisplay metrics={metrics} />}
             
             <Card className="w-full max-w-4xl mx-auto">

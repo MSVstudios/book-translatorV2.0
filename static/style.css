@@ -1,0 +1,166 @@
+:root {
+    /* Light Theme */
+    --bg-primary: #d3d0cbff; /* timberwolf */
+    --text-primary: #1e2019ff; /* eerie-black */
+    --bg-secondary: #d3d0cbff; /* timberwolf */
+    --text-secondary: #393e41ff; /* onyx */
+    --border-color: #d3d0cbff; /* timberwolf */
+    --blue-200: #bfdbfe; /* Keep as is or adapt */
+    --blue-600: #2563eb; /* Keep as is or adapt */
+    --blue-500: #3b82f6; /* Keep as is or adapt */
+    --red-500: #ef4444;   /* Keep as is or adapt */
+    --red-100: #fecaca;   /* Keep as is or adapt */
+    --green-100: #dcfce7; /* Keep as is or adapt */
+    --green-800: #166534; /* Keep as is or adapt */
+    --yellow-100: #fef9c3; /* Keep as is or adapt */
+    --yellow-800: #854d0e; /* Keep as is or adapt */
+    --gray-100: #f3f4f6;  /* Keep as is or adapt */
+
+    /* New Palette for Light Mode */
+    --bg-box-light-1: #e2c044ff; /* old-gold */
+    --bg-box-light-2: #587b7fff; /* myrtle-green */
+    --bg-box-light-3: #1e2019ff; /* eerie-black */
+    --bg-box-light-4: #ffffff;  /* White for contrast */
+}
+
+[data-theme="dark"] {
+    /* Dark Theme */
+    --bg-primary: #1e2019ff; /* eerie-black */
+    --text-primary: #d3d0cbff; /* timberwolf */
+    --bg-secondary: #393e41ff; /* onyx */
+    --text-secondary: #d3d0cbff; /* timberwolf */
+    --border-color: #393e41ff; /* onyx */
+    --blue-200: #1e3a8a;   /* Keep as is or adapt */
+    --blue-600: #93c5fd;   /* Keep as is or adapt */
+    --blue-500: #60a5fa;   /* Keep as is or adapt */
+    --red-500: #f87171;    /* Keep as is or adapt */
+    --red-100: #440a0a;    /* Keep as is or adapt */
+    --green-100: #052e16;  /* Keep as is or adapt */
+    --green-800: #a7f3d0;  /* Keep as is or adapt */
+    --yellow-100: #332708;  /* Keep as is or adapt */
+    --yellow-800: #fde68a;  /* Keep as is or adapt */
+    --gray-100: #374151;   /* Keep as is or adapt */
+
+    /* New Palette for Dark Mode */
+    --bg-box-dark-1: #393e41ff; /* onyx */
+    --bg-box-dark-2: #587b7fff; /* myrtle-green */
+    --bg-box-dark-3: #1e2019ff; /* eerie-black */
+    --bg-box-dark-4: #000000;  /* Black for contrast */
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+}
+
+.error-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.loading-indicator {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--bg-primary); /* Match border to background */
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+[data-theme="dark"] .bg-white {
+    background-color: var( --bg-secondary); /* timberwolf */
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .text-gray-600 {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .text-sm {
+    color: var(--bg-secondary);
+}
+
+
+
+/* Classes to apply the new background colors */
+.bg-orange-50 {
+    background-color: var(--bg-box-light-1);
+}
+
+.bg-green-50  {
+    background-color: var(--bg-box-light-1);
+}
+
+.bg-purple-50 {
+    background-color: var(--bg-box-light-4);
+}
+
+.bg-blue-50 {
+    background-color: var(--bg-box-light-4);
+}
+
+
+
+
+[data-theme="dark"] .bg-orange-50 {
+    background-color: var(--bg-box-dark-1);
+}
+
+[data-theme="dark"] .bg-green-50  {
+    background-color: var(--bg-box-dark-1);
+}
+
+[data-theme="dark"] .bg-purple-50 {
+    background-color: var(--bg-box-dark-4);
+}
+
+[data-theme="dark"] .bg-blue-50 {
+    background-color: var(--bg-box-dark-4);
+}
+
+
+/* select */
+
+/* Existing styles for the select element */
+select {
+    /* Add any default styles here */
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 0.375rem; /* Rounded corners */
+    transition: all 0.2s ease-in-out;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Dark mode styles for the select element */
+[data-theme="dark"] select {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--border-color); /* Ensure border adapts */
+}
+
+/* Focus state (optional) */
+select:focus {
+    outline: none;
+    border-color: var(--blue-500); /* Example: Use a blue color on focus */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); /* Example: Add a subtle shadow */
+}
+
+/* Dark mode focus state (optional) */
+[data-theme="dark"] select:focus {
+    border-color: var(--blue-200); /* Adapt focus color for dark mode */
+    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2); /* Adapt shadow color */
+}
