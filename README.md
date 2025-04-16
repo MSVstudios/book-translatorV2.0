@@ -5,6 +5,9 @@
 
 <div align="center">
 <p><strong>Book Translator</strong></p>
+
+  <p> FORK by Memory Slash Vision studios </p>
+ 
   <p>A platform for translating books and large text documents.</p>
   <p><strong>Two-step process. For better quality.</strong></p>
 </div>
