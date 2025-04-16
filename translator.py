@@ -20,7 +20,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from deep_translator import GoogleTranslator
 
-app = Flask(__name__)
+# init FLASK
+app = Flask(__name__) 
 CORS(app)
 
 # Folders setup
@@ -28,11 +29,12 @@ UPLOAD_FOLDER = 'uploads'
 TRANSLATIONS_FOLDER = 'translations'
 STATIC_FOLDER = 'static'
 LOG_FOLDER = 'logs'
-DB_PATH = 'translations.db'
-CACHE_DB_PATH = 'cache.db'
+DB_FOLDER = 'db'
+DB_PATH = DB_FOLDER + '/translations.db'
+CACHE_DB_PATH = DB_FOLDER + '/cache.db'
 
 # Create necessary directories
-for folder in [UPLOAD_FOLDER, TRANSLATIONS_FOLDER, STATIC_FOLDER, LOG_FOLDER]:
+for folder in [UPLOAD_FOLDER, TRANSLATIONS_FOLDER, STATIC_FOLDER, LOG_FOLDER, DB_FOLDER]:
     os.makedirs(folder, exist_ok=True)
 
 # Logger setup
@@ -204,7 +206,8 @@ class TranslationCache:
             # Use direct string formatting for date arithmetic since SQLite's 
             # datetime() function doesn't accept parameters for interval
             conn.execute(
-                f"DELETE FROM translation_cache WHERE last_used < datetime('now', '-{days} days')"
+                "DELETE FROM translation_cache WHERE last_used < datetime('now', ?)",
+                (f"-{days} days",)
             )
 
 # Initialize cache
@@ -240,7 +243,7 @@ def init_db():
         conn.executescript('''
             DROP TABLE IF EXISTS chunks;
             DROP TABLE IF EXISTS translations;
-            
+        
             CREATE TABLE translations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 filename TEXT NOT NULL,
@@ -258,9 +261,10 @@ def init_db():
                 genre TEXT DEFAULT 'unknown',  -- Added genre with default value
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                error_message TEXT
+                error_message TEXT,
+                llm_refine BOOLEAN DEFAULT TRUE  -- ADDED llm_refine
             );
-
+        
             CREATE TABLE chunks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 translation_id INTEGER,
@@ -278,7 +282,7 @@ def init_db():
 init_db()
 
 class BookTranslator:
-    def __init__(self, model_name: str = "aya-expanse:32b", chunk_size: int = 1000):
+    def __init__(self, model_name: str = "aya-expanse:32b", chunk_size: int = 1000, llm_refine: bool = True):
         self.model_name = model_name
         self.api_url = "http://localhost:11434/api/generate"
         self.chunk_size = chunk_size
@@ -288,6 +292,7 @@ class BookTranslator:
             pool_connections=10,
             pool_maxsize=10
         ))
+        self.llm_refine = llm_refine # add llm_refine
 
     def split_into_chunks(self, text: str) -> list:
         """Split text into smaller chunks for translation."""
@@ -350,6 +355,7 @@ class BookTranslator:
                 source=source_lang if source_lang != 'auto' else 'auto',
                 target=target_lang
             )
+
             
             # Update database with total chunks
             with sqlite3.connect(DB_PATH) as conn:
@@ -371,6 +377,9 @@ class BookTranslator:
                         # Stage 1: Google Translate
                         logger.translation_logger.info(f"Translating chunk {i}/{total_chunks}")
                         google_translation = translator.translate(chunk)
+
+                        logger.translation_logger.info(f"Google translation for chunk {i}: {google_translation}")
+
                         machine_translations.append(google_translation)
                         
                         progress = (i / (total_chunks * 2)) * 100
@@ -384,7 +393,14 @@ class BookTranslator:
                         
                         # Stage 2: Literary refinement
                         logger.translation_logger.info(f"Refining chunk {i}/{total_chunks}")
-                        refined_translation = self.refine_translation(google_translation, target_lang)
+                        if self.llm_refine:
+                            logger.translation_logger.info(f"Refining translation for chunk {i}")
+                            refined_translation = self.refine_translation(google_translation, target_lang)
+                        else:
+                            logger.translation_logger.info(f"No refinement for chunk {i}")
+                            refined_translation = google_translation
+
+                            
                         translated_chunks.append(refined_translation)
                         
                         # Cache the results
@@ -494,7 +510,7 @@ class BookTranslator:
         
         prompt = f"""{prompt_text}
     
-    {text}"""
+        {text}"""
         
         payload = {
             "model": self.model_name,
@@ -505,7 +521,7 @@ class BookTranslator:
         response = self.session.post(
             self.api_url,
             json=payload,
-            timeout=(300, 300)
+            timeout=(1800, 1800)
         )
         response.raise_for_status()
         result = response.json()
@@ -555,7 +571,8 @@ class TranslationRecovery:
             # Use direct string formatting for date arithmetic since SQLite's
             # datetime() function doesn't accept parameters for interval
             conn.execute(
-                f"DELETE FROM translations WHERE status = 'error' AND created_at < datetime('now', '-{days} days')"
+                "DELETE FROM translations WHERE status = 'error' AND created_at < datetime('now', ?)",
+                (f"-{days} days",)
             )
 
 recovery = TranslationRecovery()
@@ -627,42 +644,44 @@ def get_translation(translation_id):
 def translate():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
-    
+
     try:
         file = request.files['file']
         source_lang = request.form.get('sourceLanguage')
         target_lang = request.form.get('targetLanguage')
         model_name = request.form.get('model')
-        
+        llm_refine = request.form.get('llmRefine') == 'true' # Get llmRefine from form
+
         if not all([file, source_lang, target_lang, model_name]):
             return jsonify({'error': 'Missing required parameters'}), 400
-        
+
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
-        
+
         filename = secure_filename(file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
-        
+
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 text = f.read()
         except UnicodeDecodeError:
             with open(filepath, 'r', encoding='cp1251') as f:
                 text = f.read()
-        
+
         with sqlite3.connect(DB_PATH) as conn:
             cur = conn.execute('''
                 INSERT INTO translations (
                     filename, source_lang, target_lang, model,
-                    status, original_text, genre  -- Included genre
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (filename, source_lang, target_lang, model_name, 
-                  'in_progress', text, 'unknown'))  # Set genre to 'unknown'
+                    status, original_text, genre, llm_refine  -- Included llm_refine
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (filename, source_lang, target_lang, model_name,
+                  'in_progress', text, 'unknown', llm_refine))  # Set genre to 'unknown'
             translation_id = cur.lastrowid
-        
+
         translator = BookTranslator(model_name=model_name)
-        
+        translator.llm_refine = llm_refine # Set llm_refine attribute
+
         def generate():
             try:
                 for update in translator.translate_text(text, source_lang, target_lang, translation_id):
@@ -672,9 +691,9 @@ def translate():
                 logger.translation_logger.error(f"Translation error: {error_message}")
                 logger.translation_logger.error(traceback.format_exc())
                 yield f"data: {json.dumps({'error': error_message})}\n\n"
-                
+
         return Response(generate(), mimetype='text/event-stream')
-    
+
     except Exception as e:
         logger.app_logger.error(f"Translation request error: {str(e)}")
         logger.app_logger.error(traceback.format_exc())

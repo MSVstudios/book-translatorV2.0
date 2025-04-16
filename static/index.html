@@ -235,35 +235,62 @@
             </div>
         );
 
-        const FileUpload = ({ onFileChange, error }) => (
-            <div>
-                <label className="block text-sm font-medium mb-2">Upload File</label>
-                <div className="flex items-center justify-center w-full">
-                    <label className={`flex flex-col items-center justify-center w-full h-32 
-                                    border-2 border-dashed rounded-lg cursor-pointer 
-                                    bg-gray-50 hover:bg-gray-100 transition-colors duration-200
-                                    ${error ? 'border-red-500' : 'border-gray-300'}`}>
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <Icons.Upload />
-                            <p className="mb-2 text-sm text-gray-500">
-                                <span className="font-semibold">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-gray-500">TXT files only (max 10MB)</p>
+                const FileUpload = ({ onFileChange, error, llmRefine, setLlmRefine }) => {
+                    const handleDragOver = (event) => {
+                        event.preventDefault();
+                    };
+                
+                    const handleDrop = (event) => {
+                        event.preventDefault();
+                        const file = event.dataTransfer.files[0];
+                        onFileChange({ target: { files: [file] } }); // Simulate file input change event
+                    };
+                
+                    return (
+                        <div>
+                            <label className="inline-flex items-center">
+                                <input
+                                    type="checkbox"
+                                    className="form-checkbox h-5 w-5 text-blue-500"
+                                    checked={llmRefine}
+                                    onChange={(e) => setLlmRefine(e.target.checked)}
+                                />
+                                <span className="ml-2 text-gray-700">LLM Refine</span>
+                            </label>
+                
+                            <label className="block text-sm font-medium mb-2">Upload File</label>
+                            <div
+                                className={`flex items-center justify-center w-full`}
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                            >
+                                <label
+                                    className={`flex flex-col items-center justify-center w-full h-32
+                                                        border-2 border-dashed rounded-lg cursor-pointer
+                                                        bg-gray-50 hover:bg-gray-100 transition-colors duration-200
+                                                        ${error ? 'border-red-500' : 'border-gray-300'}`}
+                                >
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Icons.Upload />
+                                        <p className="mb-2 text-sm text-gray-500">
+                                            <span className="font-semibold">Click to upload</span> or drag and drop
+                                        </p>
+                                        <p className="text-xs text-gray-500">TXT files only (max 10MB)</p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".txt"
+                                        onChange={onFileChange}
+                                    />
+                                </label>
+                            </div>
+                            {error && (
+                                <p className="text-sm text-red-500 mt-1">{error}</p>
+                            )}
                         </div>
-                        <input
-                            type="file"
-                            className="hidden"
-                            accept=".txt"
-                            onChange={onFileChange}
-                        />
-                    </label>
-                </div>
-                {error && (
-                    <p className="text-sm text-red-500 mt-1">{error}</p>
-                )}
-            </div>
-        );
-
+                    );
+                };
         const TextPreview = ({ title, text }) => (
             <div>
                 <h3 className="font-medium mb-2">{title}</h3>
@@ -292,6 +319,7 @@
             const [error, setError] = React.useState(null);
             const [metrics, setMetrics] = React.useState(null);
             const [formErrors, setFormErrors] = React.useState({});
+            const [llmRefine, setLlmRefine] = React.useState(true); // Add state for the checkbox
             
             // Constants
             const languages = [
@@ -415,77 +443,78 @@
             return Object.keys(errors).length === 0;
           };
           
-          const handleTranslate = async () => {
-            if (!validateForm()) {
-              return;
-            }
-            
-            setIsTranslating(true);
-            setProgress(0);
-            setDetectedLanguage(null);
-            setError(null);
-            
-            const formData = new FormData();
-            formData.append('file', inputFile);
-            formData.append('sourceLanguage', sourceLanguage);
-            formData.append('targetLanguage', targetLanguage);
-            formData.append('model', selectedModel);
-            
-            try {
-              const response = await fetch(`${API_URL}/translate`, {
-                method: 'POST',
-                body: formData
-              });
-              
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                    const handleTranslate = async () => {
+              if (!validateForm()) {
+                  return;
               }
-              
-              const reader = response.body.getReader();
-              const decoder = new TextDecoder();
-              let buffer = '';
-              
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                
-                buffer = lines.pop() || '';
-                
-                for (const line of lines) {
-                  if (line.trim() && line.startsWith('data: ')) {
-                    try {
-                      const data = JSON.parse(line.slice(6).trim());
-                      if (data.error) {
-                        setError(`Translation error: ${data.error}`);
-                        setIsTranslating(false);
-                        return;
-                      }
-                      if (data.progress !== undefined) {
-                        setProgress(data.progress);
-                      }
-                      if (data.translated_text) {
-                        setTranslatedText(data.translated_text);
-                      }
-                      if (data.detected_language) {
-                        setDetectedLanguage(data.detected_language);
-                      }
-                    } catch (e) {
-                      console.error('Error parsing SSE data:', e);
-                      console.debug('Problematic line:', line);
-                    }
+          
+              setIsTranslating(true);
+              setProgress(0);
+              setDetectedLanguage(null);
+              setError(null);
+          
+              const formData = new FormData();
+              formData.append('file', inputFile);
+              formData.append('sourceLanguage', sourceLanguage);
+              formData.append('targetLanguage', targetLanguage);
+              formData.append('model', selectedModel);
+              formData.append('llmRefine', llmRefine); // Send llmRefine value
+          
+              try {
+                  const response = await fetch(`${API_URL}/translate`, {
+                      method: 'POST',
+                      body: formData
+                  });
+          
+                  if (!response.ok) {
+                      throw new Error(`HTTP error! status: ${response.status}`);
                   }
-                }
+          
+                  const reader = response.body.getReader();
+                  const decoder = new TextDecoder();
+                  let buffer = '';
+          
+                  while (true) {
+                      const { done, value } = await reader.read();
+                      if (done) break;
+          
+                      buffer += decoder.decode(value, { stream: true });
+                      const lines = buffer.split('\n');
+          
+                      buffer = lines.pop() || '';
+          
+                      for (const line of lines) {
+                          if (line.trim() && line.startsWith('data: ')) {
+                              try {
+                                  const data = JSON.parse(line.slice(6).trim());
+                                  if (data.error) {
+                                      setError(`Translation error: ${data.error}`);
+                                      setIsTranslating(false);
+                                      return;
+                                  }
+                                  if (data.progress !== undefined) {
+                                      setProgress(data.progress);
+                                  }
+                                  if (data.translated_text) {
+                                      setTranslatedText(data.translated_text);
+                                  }
+                                  if (data.detected_language) {
+                                      setDetectedLanguage(data.detected_language);
+                                  }
+                              } catch (e) {
+                                  console.error('Error parsing SSE data:', e);
+                                  console.debug('Problematic line:', line);
+                              }
+                          }
+                      }
+                  }
+              } catch (error) {
+                  console.error('Translation error:', error);
+                  setError('Translation failed. Please try again.');
+              } finally {
+                  setIsTranslating(false);
+                  fetchTranslations();
               }
-            } catch (error) {
-              console.error('Translation error:', error);
-              setError('Translation failed. Please try again.');
-            } finally {
-              setIsTranslating(false);
-              fetchTranslations();
-            }
           };
           
           const handleDownload = async (translationId) => {
@@ -640,10 +669,11 @@
               </div>
               </div>
               
-              <FileUpload 
-              onFileChange={handleFileChange} 
-              error={formErrors.file}
-              inputFile={inputFile}
+              <FileUpload
+                  onFileChange={handleFileChange}
+                  error={formErrors.inputFile}
+                  llmRefine={llmRefine}
+                  setLlmRefine={setLlmRefine}
               />
               
               {isTranslating ? (
