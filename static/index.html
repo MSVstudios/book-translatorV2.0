@@ -212,28 +212,28 @@
             </div>
         );
 
-        const ProgressBar = ({ progress }) => (
-            <div className="relative pt-1">
-                <div className="flex mb-2 items-center justify-between">
-                    <div>
-                        <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
-                            Translation in progress
-                        </span>
+                const ProgressBar = ({ progress, currentChunk, totalChunks, stage }) => (
+                    <div className="relative pt-1">
+                        <div className="flex mb-2 items-center justify-between">
+                            <div>
+                                <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                                    Translation in progress - {stage} (Chunk {currentChunk}/{totalChunks})
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-xs font-semibold inline-block text-blue-600">
+                                    {progress.toFixed(1)}%
+                                </span>
+                            </div>
+                        </div>
+                        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                            <div 
+                                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <span className="text-xs font-semibold inline-block text-blue-600">
-                            {progress.toFixed(1)}%
-                        </span>
-                    </div>
-                </div>
-                <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
-                    <div 
-                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                    ></div>
-                </div>
-            </div>
-        );
+                );
 
                 const FileUpload = ({ onFileChange, error, llmRefine, setLlmRefine }) => {
                     const handleDragOver = (event) => {
@@ -320,7 +320,10 @@
             const [metrics, setMetrics] = React.useState(null);
             const [formErrors, setFormErrors] = React.useState({});
             const [llmRefine, setLlmRefine] = React.useState(true); // Add state for the checkbox
-            
+            const [currentChunk, setCurrentChunk] = React.useState(0); // Add state for current chunk
+            const [totalChunks, setTotalChunks] = React.useState(0); // Add state for total chunks
+            const [stage, setStage] = React.useState(''); // Add state for translation stage
+        
             // Constants
             const languages = [
                 { code: 'auto', name: 'Auto Detect' },
@@ -492,16 +495,26 @@
                                       setIsTranslating(false);
                                       return;
                                   }
-                                  if (data.progress !== undefined) {
-                                      setProgress(data.progress);
-                                  }
-                                  if (data.translated_text) {
-                                      setTranslatedText(data.translated_text);
-                                  }
-                                  if (data.detected_language) {
-                                      setDetectedLanguage(data.detected_language);
-                                  }
-                              } catch (e) {
+                                                                    
+                                      if (data.progress !== undefined) {
+                                          setProgress(data.progress);
+                                      }
+                                      if (data.translated_text) {
+                                          setTranslatedText(data.translated_text);
+                                      }
+                                      if (data.detected_language) {
+                                          setDetectedLanguage(data.detected_language);
+                                      }
+                                      if (data.current_chunk !== undefined) {
+                                          setCurrentChunk(data.current_chunk);
+                                      }
+                                      if (data.total_chunks !== undefined) {
+                                          setTotalChunks(data.total_chunks);
+                                      }
+                                      if (data.stage !== undefined) {
+                                          setStage(data.stage);
+                                      }
+                                } catch (e) {
                                   console.error('Error parsing SSE data:', e);
                                   console.debug('Problematic line:', line);
                               }
@@ -676,10 +689,17 @@
                   setLlmRefine={setLlmRefine}
               />
               
+                            
               {isTranslating ? (
-                <ProgressBar progress={progress} />
+                <ProgressBar 
+                    progress={progress} 
+                    currentChunk={currentChunk}
+                    totalChunks={totalChunks}
+                    stage={stage}
+                />
               ) : (
                 <Button
+
                 onClick={handleTranslate}
                 disabled={!sourceLanguage || !targetLanguage || !selectedModel || !inputFile}
                 className="w-full"
